@@ -1,46 +1,65 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Customer {
-    private static String regex = "Order \\d (tea|coffee)";
-
+    private static String regex = "order \\d (tea|coffee)";
 
     public static void main(String[] args) {
-        String serverAddress = "localhost"; // Change this to the actual server address
-        int portNumber = 12345;
-        Scanner scanner = new Scanner(System.in);
 
-        while (true) {
-            try (Socket socket = new Socket(serverAddress, portNumber)) {
-                System.out.println("Connected to the Virtual Café!");
-                System.out.println("What would you like to do : Order tea/coffee,get order status or exit ? ");
-                String order = scanner.nextLine();
+        try {
 
-                ArrayList<String> orders = findRegexMatches(regex, order);
+            Socket socket = new Socket("localhost", 5000);
+
+            Scanner input = new Scanner(new InputStreamReader(socket.getInputStream()));
+            PrintWriter output =  new PrintWriter(socket.getOutputStream(), true);
+
+            Scanner userInput = new Scanner(new InputStreamReader(System.in));
+
+            while (true) {
+                System.out.println("Enter a command (order tea, order coffee, order status, exit):");
+                String command = userInput.nextLine();
+                command = command.toLowerCase();
+                ArrayList<String> orders = findRegexMatches(regex, command);
                 if (orders.isEmpty()) {
                     System.out.println("Invalid command");
                     continue;
                 }
-                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+                ArrayList<String> refinedOrders = new ArrayList<>();
                 for (String o : orders)
-                    writer.println(o);
+                {
+                    String[] words = o.split("\\s+");
+                    int count = Integer.parseInt(words[1]);
+                    String newOrder = words[0] + " " + words[2];
+                    for (int i = 0; i < count; i++){
+                        refinedOrders.add(newOrder);
+                    }
+                }
+                int orderCount = refinedOrders.size();
+                output.println(orderCount);
+                for (String o : refinedOrders) {
+                    output.println(o);
+                }
 
+                String line;
+                for (int i =0; i < orderCount; i ++){
+                    line = input.nextLine();
+                    System.out.println("Server Reply: " + line);
+                }
 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String confirmation = reader.readLine();
-                System.out.println("Server says: " + confirmation);
-
-
-            } catch (IOException e) {
-                System.err.println("Error occurred while connecting to the Virtual Café: " + e.getMessage());
+                if (command.equalsIgnoreCase("exit")) {
+                    break;
+                }
             }
+            input.close();
+            output.close();
+            userInput.close();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
     private static ArrayList<String> findRegexMatches(String regex, String inputText)
@@ -49,12 +68,10 @@ public class Customer {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(inputText);
 
-        // Find all matches
         while (matcher.find()) {
             String match = matcher.group();
             result.add(match);
         }
         return result;
-
     }
 }
