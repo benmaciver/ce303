@@ -1,7 +1,7 @@
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.*;
+
 import Helpers.*;
 
 public class Barista extends Thread{
@@ -9,19 +9,31 @@ public class Barista extends Thread{
     static Thread Barista2 = new Thread(new coffeeMaker());
     static Thread Barista3 = new Thread(new teaMaker());
     static Thread Barista4 = new Thread(new teaMaker());
+    static String[] drinkRecipients = new String[4];
     static ArrayList<String> waitingArea = new ArrayList<>();
+    static Map<String,ArrayList<Object>> trayArea = new HashMap<>();
+    static int orderSize;
+    static String currentUser;
     public void run(){
         while (true) {
-            if (System.currentTimeMillis() % 1500 == 0) {
+            if (System.currentTimeMillis() % 500 == 0) {
 
-                if (Barista1.getState() == Thread.State.TERMINATED)
+                if (Barista1.getState() == Thread.State.TERMINATED) {
                     Barista1 = new Thread(new coffeeMaker());
-                if (Barista2.getState() == Thread.State.TERMINATED)
+                    drinkRecipients[0] = null;
+                }
+                if (Barista2.getState() == Thread.State.TERMINATED) {
                     Barista2 = new Thread(new coffeeMaker());
-                if (Barista3.getState() == Thread.State.TERMINATED)
+                    drinkRecipients[1] = null;
+                }
+                if (Barista3.getState() == Thread.State.TERMINATED) {
                     Barista3 = new Thread(new teaMaker());
-                if (Barista4.getState() == Thread.State.TERMINATED)
+                    drinkRecipients[2]=null;
+                }
+                if (Barista4.getState() == Thread.State.TERMINATED) {
                     Barista4 = new Thread(new teaMaker());
+                    drinkRecipients[3]=null;
+                }
                 ArrayList<String> copy = (ArrayList<String>) waitingArea.clone();
                 for (String request : copy) {
                     processCommand(request, false);
@@ -31,6 +43,7 @@ public class Barista extends Thread{
         }
     }
     public static void main(String[] args) {
+        int user = 0;
         try {
             ServerSocket serverSocket = new ServerSocket(5000);
             System.out.println("Server is waiting for customers...");
@@ -40,35 +53,40 @@ public class Barista extends Thread{
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Customer connected.");
-
                 Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
                 PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
-
-
+                currentUser = input.nextLine();
 
                 while (true) {
-
-                    if (Barista1.getState() == Thread.State.TERMINATED)
-                        Barista1 = new Thread(new coffeeMaker());
-                    if (Barista2.getState() == Thread.State.TERMINATED)
-                        Barista2 = new Thread(new coffeeMaker());
-                    if (Barista3.getState() == Thread.State.TERMINATED)
-                        Barista3 = new Thread(new teaMaker());
-                    if (Barista4.getState() == Thread.State.TERMINATED)
-                        Barista4 = new Thread(new teaMaker());
-
                     String line;
                     line = input.nextLine();
-                    if (line == "new request incoming")
-                        continue;
                     boolean br = false;
-                    int orderCount = Integer.parseInt(input.nextLine());
+                    if (line.equals("exit"))
+                        break;
+                    if (line.equals("order status")){
+                        Boolean complete = true;
+                        for (String recipient : drinkRecipients){
+                            if (recipient !=null && recipient.equals(currentUser)) {
+                                complete = false;
+                            }
+                        }
+                        if (complete)
+                            output.println("order complete");
+                        else output.println("order being processed");
+                        continue;
+
+                    }
+                    int orderCount = Integer.parseInt(line);
+                    String[] order = new String[orderCount];
                     for (int i =0; i < orderCount; i ++){
                         line = input.nextLine();
+                        order[i] = line;
                         output.println(processCommand(line,true));
                     }
-                    if (br)
-                        break;
+                    ArrayList<Object> list = new ArrayList<>();
+                    list.add(order);
+                    list.add(order.length);
+                    trayArea.put(currentUser,list);
 
                 }
 
@@ -91,6 +109,8 @@ public class Barista extends Thread{
                         if (!changingList)
                             waitingArea.remove(command);
                         Barista3.start();
+                        drinkRecipients[2] = currentUser;
+
                         return "Tea ordered. In process.";
                     }
                 }
@@ -99,6 +119,8 @@ public class Barista extends Thread{
                         if (!changingList)
                             waitingArea.remove(command);
                         Barista4.start();
+                        drinkRecipients[3] = currentUser;
+
                         return "Tea ordered. In process.";
                     }
                 }
@@ -111,6 +133,8 @@ public class Barista extends Thread{
                         if (!changingList)
                             waitingArea.remove(command);
                         Barista1.start();
+                        drinkRecipients[0] = currentUser;
+
                         return "Coffee ordered. In process.";
                     }
                 }
@@ -119,6 +143,8 @@ public class Barista extends Thread{
                         if (!changingList)
                             waitingArea.remove(command);
                         Barista2.start();
+                        drinkRecipients[1] = currentUser;
+
                         return "Coffee ordered. In process.";
                     }
                 }
