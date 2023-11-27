@@ -21,8 +21,10 @@ public class Customer {
 
             while (true) {
                 System.out.println("Enter a command (order tea, order coffee, order status, exit):");
+                output.println("new request incoming");
                 String command = userInput.nextLine();
                 command = command.toLowerCase();
+                //output.println("new request incoming");
                 ArrayList<String> orders = findRegexMatches(regex, command);
                 if (orders.isEmpty()) {
                     System.out.println("Invalid command");
@@ -74,4 +76,5 @@ public class Customer {
         }
         return result;
     }
+
 }
