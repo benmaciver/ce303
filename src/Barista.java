@@ -1,10 +1,16 @@
+import Helpers.coffeeMaker;
+import Helpers.teaMaker;
+
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Scanner;
-
 public class Barista {
 
+    static Runnable teaMaker1 = new Thread(new teaMaker());
+    static Runnable teaMaker2 = new Thread(new teaMaker());
+    static Runnable coffeeMaker1 = new Thread(new coffeeMaker());
+    static Runnable coffeeMaker2 = new Thread(new coffeeMaker());
     public static void main(String[] args) {
         try {
             ServerSocket serverSocket = new ServerSocket(5000);
@@ -16,6 +22,7 @@ public class Barista {
 
                 Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
                 PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
+
 
                 while (true) {
                     String line;
@@ -49,7 +56,7 @@ public class Barista {
     private static String processCommand(String command) {
         switch (command.toLowerCase()) {
             case "order tea":
-                return "Tea ordered. In process.";
+                teaMaker1;
             case "order coffee":
                 return "Coffee ordered. In process.";
             case "order status":
