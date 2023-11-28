@@ -5,8 +5,16 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Customer {
+public class Customer extends Thread {
     private static String regex = "order \\d (tea|coffee|teas|coffees)";
+    static Scanner input;
+    public void run(){
+        String line;
+        while (input.hasNext()){
+            line = input.nextLine();
+            System.out.println("Server Reply: " + line);
+        }
+    }
 
     public static void main(String[] args) {
 
@@ -14,13 +22,15 @@ public class Customer {
 
             Socket socket = new Socket("localhost", 5000);
 
-            Scanner input = new Scanner(new InputStreamReader(socket.getInputStream()));
+            input = new Scanner(new InputStreamReader(socket.getInputStream()));
             PrintWriter output =  new PrintWriter(socket.getOutputStream(), true);
 
             Scanner userInput = new Scanner(new InputStreamReader(System.in));
             System.out.println("Enter your name please: ");
             String name = userInput.nextLine();
             output.println(name);
+            Customer thread2 = new Customer();
+            thread2.start();
 
             while (true) {
                 System.out.println("Enter a command (order tea, order coffee, order status, exit):");
@@ -55,12 +65,7 @@ public class Customer {
                         output.println(o);
                     }
                 }
-                String line;
 
-                for (int i =0; i < orderCount; i ++){
-                    line = input.nextLine();
-                    System.out.println("Server Reply: " + line);
-                }
 
 
             }

@@ -11,33 +11,52 @@ public class Barista extends Thread{
     static Thread Barista4 = new Thread(new teaMaker());
     static String[] drinkRecipients = new String[4];
     static ArrayList<String> waitingArea = new ArrayList<>();
-    static Map<String,ArrayList<Object>> trayArea = new HashMap<>();
-    static int orderSize;
+    static Map<String,ArrayList<String[]>> brewingArea = new HashMap<>();
+    static ArrayList<String> trayArea = new ArrayList<>();
     static String currentUser;
+    static PrintWriter output;
     public void run(){
         while (true) {
-            if (System.currentTimeMillis() % 500 == 0) {
+            if (System.currentTimeMillis() % 50 == 0) {
 
                 if (Barista1.getState() == Thread.State.TERMINATED) {
                     Barista1 = new Thread(new coffeeMaker());
+                    updateBrewingArea(currentUser,"coffee");
                     drinkRecipients[0] = null;
                 }
                 if (Barista2.getState() == Thread.State.TERMINATED) {
                     Barista2 = new Thread(new coffeeMaker());
+                    updateBrewingArea(currentUser,"coffee");
                     drinkRecipients[1] = null;
                 }
                 if (Barista3.getState() == Thread.State.TERMINATED) {
                     Barista3 = new Thread(new teaMaker());
+                    updateBrewingArea(currentUser,"tea");
                     drinkRecipients[2]=null;
                 }
                 if (Barista4.getState() == Thread.State.TERMINATED) {
                     Barista4 = new Thread(new teaMaker());
+                    updateBrewingArea(currentUser,"tea");
                     drinkRecipients[3]=null;
+                }
+
+                for (Map.Entry<String, ArrayList<String[]>> entry : brewingArea.entrySet()){
+                    if (areAllElementsNull(entry.getValue().get(0))){
+                        int tea = 0,coffee = 0;
+                        for (String order : entry.getValue().get(1)){
+                            if (order.equals("order tea")){
+                                tea++;
+                            }
+                            else coffee++;
+                        }
+                        output.println("order delivered to " + entry.getKey() + " ( " + tea + " teas and " + coffee + " coffees )");
+                    }
                 }
                 ArrayList<String> copy = (ArrayList<String>) waitingArea.clone();
                 for (String request : copy) {
                     processCommand(request, false);
                 }
+
 
             }
         }
@@ -54,7 +73,7 @@ public class Barista extends Thread{
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Customer connected.");
                 Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
-                PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
+                output = new PrintWriter(clientSocket.getOutputStream(), true);
                 currentUser = input.nextLine();
 
                 while (true) {
@@ -83,10 +102,10 @@ public class Barista extends Thread{
                         order[i] = line;
                         output.println(processCommand(line,true));
                     }
-                    ArrayList<Object> list = new ArrayList<>();
+                    ArrayList<String[]> list = new ArrayList<>();
                     list.add(order);
-                    list.add(order.length);
-                    trayArea.put(currentUser,list);
+                    list.add(Arrays.copyOf(order,order.length));
+                    brewingArea.put(currentUser,list);
 
                 }
 
@@ -155,5 +174,33 @@ public class Barista extends Thread{
                 return "Invalid command";
         }
     }
+    private static void updateBrewingArea(String user, String drink){
+        boolean br = false;
+        for (Map.Entry<String, ArrayList<String[]>> entry : brewingArea.entrySet()){
+            String key = entry.getKey();
+            ArrayList<String[]> value = entry.getValue();
+            String[] orders = value.get(0);
+            if (key.equals(user)){
+                for (int i = 0; i < orders.length ; i++){
+                    if (orders[i]!=null && orders[i].equals("order " + drink)) {
+                        orders[i] = null;
+                        br = true;
+                        break;
+                    }
+                }
+            }
+            if (br)
+                break;
+        }
+    }
+    private static <T> boolean areAllElementsNull(T[] array) {
+        for (T element : array) {
+            if (element != null) {
+                return false; // If any element is not null, return false
+            }
+        }
+        return true; // All elements are null
+    }
+
 
 }
