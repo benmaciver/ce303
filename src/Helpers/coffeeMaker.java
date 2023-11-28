@@ -8,12 +8,13 @@ public class coffeeMaker implements Runnable{
         isRunning=true;
         System.out.println("Making coffee");
         try {
-            Thread.sleep(1000);
+            Thread.sleep(6000);
+            System.out.println("Coffee made");
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+//            throw new RuntimeException(e);
         }
-        System.out.println("Coffee made");
-        isRunning=false;
-    }
 
+        isRunning=false;
+
+    }
 }

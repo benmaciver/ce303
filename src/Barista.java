@@ -1,70 +1,289 @@
-import Helpers.coffeeMaker;
-import Helpers.teaMaker;
-
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Scanner;
-public class Barista {
+import java.util.*;
 
-    static Runnable teaMaker1 = new Thread(new teaMaker());
-    static Runnable teaMaker2 = new Thread(new teaMaker());
-    static Runnable coffeeMaker1 = new Thread(new coffeeMaker());
-    static Runnable coffeeMaker2 = new Thread(new coffeeMaker());
+import Helpers.*;
+import static Helpers.helperMethods.*;
+
+public class Barista extends Thread{
+    static Thread Barista1 = new Thread(new coffeeMaker());
+    static Thread Barista2 = new Thread(new coffeeMaker());
+    static Thread Barista3 = new Thread(new teaMaker());
+    static Thread Barista4 = new Thread(new teaMaker());
+    static String[] drinkRecipients = new String[4];
+    static ArrayList<String[]> waitingArea = new ArrayList<>();
+    static Map<String,ArrayList<String[]>> brewingArea = new HashMap<>();
+    static ArrayList<String> trayArea = new ArrayList<>();
+    static ArrayList<String> users = new ArrayList<>();
+    static Map<String,PrintWriter> outputs = new HashMap<>();
+    public void run(){
+        while (true) {
+            if (System.currentTimeMillis() % 50 == 0) {
+
+                if (Barista1.getState() == Thread.State.TERMINATED) {
+                    Barista1 = new Thread(new coffeeMaker());
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "coffee"))
+                            break;
+                    }
+                    drinkRecipients[0] = null;
+                }
+                if (Barista2.getState() == Thread.State.TERMINATED) {
+                    Barista2 = new Thread(new coffeeMaker());
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "coffee"))
+                            break;
+                    }
+                    drinkRecipients[1] = null;
+                }
+                if (Barista3.getState() == Thread.State.TERMINATED) {
+                    Barista3 = new Thread(new teaMaker());
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "tea"))
+                            break;
+                    }
+                    drinkRecipients[2]=null;
+                }
+                if (Barista4.getState() == Thread.State.TERMINATED) {
+                    Barista4 = new Thread(new teaMaker());
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "tea"))
+                            break;
+                    }
+                    drinkRecipients[3]=null;
+                }
+                Map<String,ArrayList<String[]>> clone = new HashMap<>(brewingArea);
+                for (Map.Entry<String, ArrayList<String[]>> entry : clone.entrySet()){
+                    if (areAllElementsNull(entry.getValue().get(0))){
+                        int tea = 0,coffee = 0;
+                        for (String order : entry.getValue().get(1)){
+                            if (order !=null && order.equals("order tea")){
+                                tea++;
+                            }
+                            else coffee++;
+                        }
+                        PrintWriter outStream = outputs.get(entry.getKey());
+                        outStream.println("order delivered to " + entry.getKey() + " ( " + tea + " teas and " + coffee + " coffees )");
+                        brewingArea.remove(entry.getKey());
+                    }
+                }
+                ArrayList<String[]> copy = (ArrayList<String[]>) waitingArea.clone();
+                for (String[] request : copy) {
+                    processCommand(request, false);
+                }
+
+
+            }
+        }
+    }
     public static void main(String[] args) {
+        int user = 0;
         try {
             ServerSocket serverSocket = new ServerSocket(5000);
             System.out.println("Server is waiting for customers...");
+            Barista thread2 = new Barista();
+            thread2.start();
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Customer connected.");
-
-                Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
-                PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
-
-
-                while (true) {
-                    String line;
-                    boolean br = false;
-                    int orderCount = Integer.parseInt(input.nextLine());
-                    for (int i =0; i < orderCount; i ++){
-                        line = input.nextLine();
-                        if (line.equalsIgnoreCase("exit")) {
-                            br=true;
-                        }
-
-                        System.out.println(line);
-                        output.println(processCommand(line));
-
-                    }
-                    if (br)
-                        break;
-                }
-
-
-                input.close();
-                output.close();
-                clientSocket.close();
-                System.out.println("Customer disconnected.");
+                Thread clientThread = new Thread(new ClientHandler(clientSocket));
+                clientThread.start();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static String processCommand(String command) {
-        switch (command.toLowerCase()) {
+    private static String processCommand(String[] command,boolean changingList){
+        switch (command[0].toLowerCase()) {
             case "order tea":
-                teaMaker1;
+                synchronized (Barista3) {
+                    if (Barista3.getState() == Thread.State.NEW) {
+                        if (!changingList)
+                            waitingArea.remove(command);
+                        Barista3.start();
+                        drinkRecipients[2] = command[1];
+
+                        return "Tea ordered. In process.";
+                    }
+                }
+                synchronized (Barista4) {
+                    if (Barista4.getState() == Thread.State.NEW) {
+                        if (!changingList)
+                            waitingArea.remove(command);
+                        Barista4.start();
+                        drinkRecipients[3] = command[1];
+
+                        return "Tea ordered. In process.";
+                    }
+                }
+                if (changingList)
+                    waitingArea.add(command);
+                return "Tea ordered. Will be prepared as soon as a barista is available";
             case "order coffee":
-                return "Coffee ordered. In process.";
-            case "order status":
-                return "Your order status is being checked.";
-            case "exit":
-                return "Thank you for visiting. Goodbye!";
+                synchronized (Barista1) {
+                    if (Barista1.getState() == Thread.State.NEW) {
+                        if (!changingList)
+                            waitingArea.remove(command);
+                        Barista1.start();
+                        drinkRecipients[0] = command[1];
+
+                        return "Coffee ordered. In process.";
+                    }
+                }
+                synchronized (Barista2) {
+                    if (Barista2.getState() == Thread.State.NEW) {
+                        if (!changingList)
+                            waitingArea.remove(command);
+                        Barista2.start();
+                        drinkRecipients[1] = command[1];
+
+                        return "Coffee ordered. In process.";
+                    }
+                }
+                if (changingList)
+                    waitingArea.add(command);
+                return "Coffee ordered. Will be prepared as soon as a barista is available";
             default:
-                return "Invalid command. Please try again.";
+                return "Invalid command";
         }
     }
+    private static boolean updateBrewingArea(String user, String drink){
+        boolean br = false;
+        for (Map.Entry<String, ArrayList<String[]>> entry : brewingArea.entrySet()){
+            String key = entry.getKey();
+            ArrayList<String[]> value = entry.getValue();
+            String[] orders = value.get(0);
+            if (key.equals(user)){
+                for (int i = 0; i < orders.length ; i++){
+                    if (orders[i]!=null && orders[i].equals("order " + drink)) {
+                        orders[i] = null;
+                        br = true;
+                        break;
+                    }
+                }
+            }
+            if (br)
+                break;
+        }
+        return br;
+    }
+    private static class ClientHandler implements Runnable {
+        private final Socket clientSocket;
+
+        public ClientHandler(Socket clientSocket) {
+            this.clientSocket = clientSocket;
+        }
+
+        @Override
+        public void run() {
+            try {
+
+                Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
+                PrintWriter outStream = new PrintWriter(clientSocket.getOutputStream(), true);
+                String currentUser = input.nextLine();
+                users.add(currentUser);
+                outputs.put(currentUser,outStream);
+
+                while (true) {
+                    String line;
+                    line = input.nextLine();
+                    boolean br = false;
+                    if (line.equals("exit")) {
+                        if (drinkRecipients[0] != null && drinkRecipients[0].equals(currentUser)) {
+                            Barista1.interrupt();
+                        }
+                        if (drinkRecipients[1] != null && drinkRecipients[1].equals(currentUser)) {
+                            Barista2.interrupt();
+                        }
+                        if (drinkRecipients[2] != null && drinkRecipients[2].equals(currentUser)) {
+                            Barista3.interrupt();
+                        }
+                        if (drinkRecipients[3] != null && drinkRecipients[3].equals(currentUser)) {
+                            Barista4.interrupt();
+                        }
+                        brewingArea.remove(currentUser);
+                        waitingArea.removeIf(s -> s[1].equals(currentUser));
+                        break;
+                    }
+                    if (line.equals("order status")){
+
+                        int trayCoffee=0,trayTea=0;
+                        int brewingCoffee=0,brewingTea=0;
+                        int waitTea=0,waitCoffee=0;
+                        for (var item : brewingArea.entrySet()){
+                            if (item.getKey().equals(currentUser)){
+                                String[] arr1 = item.getValue().get(0);
+                                String[] arr2 = item.getValue().get(1);
+                                for (int i = 0;i < arr1.length; i++){
+                                    if (arr1[i] != arr2[i] && arr2[i].equals("order tea"))
+                                        trayTea++;
+                                    else if(arr1[i] != arr2[i] && arr2[i].equals("order coffee"))
+                                        trayCoffee++;
+                                }
+                            }
+                        }
+                        if (drinkRecipients[0] != null && drinkRecipients[0].equals(currentUser)) {
+                            brewingCoffee++;
+                        }
+                        if (drinkRecipients[1] != null && drinkRecipients[1].equals(currentUser)) {
+                            brewingCoffee++;
+                        }
+                        if (drinkRecipients[2] != null && drinkRecipients[2].equals(currentUser)) {
+                            brewingTea++;
+                        }
+                        if (drinkRecipients[3] != null && drinkRecipients[3].equals(currentUser)) {
+                            brewingTea++;
+                        }
+                        for (String[] item : waitingArea){
+                            if (item[1].equals(currentUser)){
+                                if (item[0].equals("order tea"))
+                                    waitTea++;
+                                else waitCoffee++;
+                            }
+                        }
+                        outStream.println("\nOrder status for " + currentUser + ":\n" +
+                                waitCoffee + " coffees waiting and " + waitTea + " teas waiting\n" +
+                                brewingCoffee + " cofees being prepared and " + brewingTea + " teas being prepared\n" +
+                                trayCoffee + " coffees in the tray and "+ trayTea + " teas in the tray");
+                        continue;
+                    }
+                    int orderCount = Integer.parseInt(line);
+                    String[] order = new String[orderCount];
+                    for (int i =0; i < orderCount; i ++){
+                        line = input.nextLine();
+                        order[i] = line;
+                        String[] command =  {line,currentUser};
+                        outStream.println(processCommand(command,true));
+                    }
+                    boolean appendingExistingOrder = false;
+                    for (var item : brewingArea.entrySet()) {
+                        if (item.getKey().equals(currentUser)){
+                            item.getValue().set(0,concatenateArrays(item.getValue().get(0),order ));
+                            item.getValue().set(1,item.getValue().get(0).clone());
+                            appendingExistingOrder = true;
+                        }
+
+                    }
+                    if (!appendingExistingOrder){
+                        ArrayList<String[]> list = new ArrayList<>();
+                        list.add(order);
+                        list.add(Arrays.copyOf(order,order.length));
+                        brewingArea.put(currentUser,list);
+                    }
+
+                }
+
+                input.close();
+                outStream.close();
+                clientSocket.close();
+                System.out.println("Customer disconnected.");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }
+
