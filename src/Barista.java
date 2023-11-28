@@ -22,26 +22,34 @@ public class Barista extends Thread{
 
                 if (Barista1.getState() == Thread.State.TERMINATED) {
                     Barista1 = new Thread(new coffeeMaker());
-                    for (String user : users)
-                        updateBrewingArea(user,"coffee");
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "coffee"))
+                            break;
+                    }
                     drinkRecipients[0] = null;
                 }
                 if (Barista2.getState() == Thread.State.TERMINATED) {
                     Barista2 = new Thread(new coffeeMaker());
-                    for (String user : users)
-                        updateBrewingArea(user,"coffee");
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "coffee"))
+                            break;
+                    }
                     drinkRecipients[1] = null;
                 }
                 if (Barista3.getState() == Thread.State.TERMINATED) {
                     Barista3 = new Thread(new teaMaker());
-                    for (String user : users)
-                        updateBrewingArea(user,"tea");
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "tea"))
+                            break;
+                    }
                     drinkRecipients[2]=null;
                 }
                 if (Barista4.getState() == Thread.State.TERMINATED) {
                     Barista4 = new Thread(new teaMaker());
-                    for (String user : users)
-                        updateBrewingArea(user,"tea");
+                    for (String user : users) {
+                        if (updateBrewingArea(user, "tea"))
+                            break;
+                    }
                     drinkRecipients[3]=null;
                 }
                 Map<String,ArrayList<String[]>> clone = new HashMap<>(brewingArea);
@@ -141,7 +149,7 @@ public class Barista extends Thread{
                 return "Invalid command";
         }
     }
-    private static void updateBrewingArea(String user, String drink){
+    private static boolean updateBrewingArea(String user, String drink){
         boolean br = false;
         for (Map.Entry<String, ArrayList<String[]>> entry : brewingArea.entrySet()){
             String key = entry.getKey();
@@ -159,6 +167,7 @@ public class Barista extends Thread{
             if (br)
                 break;
         }
+        return br;
     }
     private static class ClientHandler implements Runnable {
         private final Socket clientSocket;
@@ -182,35 +191,60 @@ public class Barista extends Thread{
                     line = input.nextLine();
                     boolean br = false;
                     if (line.equals("exit")) {
-
-                        Barista1.interrupt();Barista2.interrupt();
-                        Barista3.interrupt();Barista4.interrupt();
-                        brewingArea = new HashMap<>();
-                        trayArea =new ArrayList<>();
-                        waitingArea = new ArrayList<>();
+                        if (drinkRecipients[0] != null && drinkRecipients[0].equals(currentUser)) {
+                            Barista1.interrupt();
+                        }
+                        if (drinkRecipients[1] != null && drinkRecipients[1].equals(currentUser)) {
+                            Barista2.interrupt();
+                        }
+                        if (drinkRecipients[2] != null && drinkRecipients[2].equals(currentUser)) {
+                            Barista3.interrupt();
+                        }
+                        if (drinkRecipients[3] != null && drinkRecipients[3].equals(currentUser)) {
+                            Barista4.interrupt();
+                        }
+                        brewingArea.remove(currentUser);
+                        waitingArea.removeIf(s -> s[1].equals(currentUser));
                         break;
                     }
                     if (line.equals("order status")){
 
                         int trayCoffee=0,trayTea=0;
                         int brewingCoffee=0,brewingTea=0;
+                        int waitTea=0,waitCoffee=0;
                         for (var item : brewingArea.entrySet()){
                             if (item.getKey().equals(currentUser)){
                                 String[] arr1 = item.getValue().get(0);
                                 String[] arr2 = item.getValue().get(1);
                                 for (int i = 0;i < arr1.length; i++){
-                                    if (arr1[i] !=null && arr1[i].equals(arr2[i])){
-                                        if (arr1[i].equals("order tea"))
-                                            brewingTea++;
-                                        else brewingCoffee++;
-                                    }
-                                    else if (arr2[i].equals("order tea"))
+                                    if (arr1[i] != arr2[i] && arr2[i].equals("order tea"))
                                         trayTea++;
-                                    else trayCoffee++;
+                                    else if(arr1[i] != arr2[i] && arr2[i].equals("order coffee"))
+                                        trayCoffee++;
                                 }
                             }
                         }
+                        if (drinkRecipients[0] != null && drinkRecipients[0].equals(currentUser)) {
+                            brewingCoffee++;
+                        }
+                        if (drinkRecipients[1] != null && drinkRecipients[1].equals(currentUser)) {
+                            brewingCoffee++;
+                        }
+                        if (drinkRecipients[2] != null && drinkRecipients[2].equals(currentUser)) {
+                            brewingTea++;
+                        }
+                        if (drinkRecipients[3] != null && drinkRecipients[3].equals(currentUser)) {
+                            brewingTea++;
+                        }
+                        for (String[] item : waitingArea){
+                            if (item[1].equals(currentUser)){
+                                if (item[0].equals("order tea"))
+                                    waitTea++;
+                                else waitCoffee++;
+                            }
+                        }
                         outStream.println("\nOrder status for " + currentUser + ":\n" +
+                                waitCoffee + " coffees waiting and " + waitTea + " teas waiting\n" +
                                 brewingCoffee + " cofees being prepared and " + brewingTea + " teas being prepared\n" +
                                 trayCoffee + " coffees in the tray and "+ trayTea + " teas in the tray");
                         continue;
