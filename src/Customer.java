@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import static Helpers.helperMethods.*;
 
 public class Customer extends Thread {
     private static String regex = "order \\d (tea|coffee|teas|coffees)";
@@ -77,17 +78,6 @@ public class Customer extends Thread {
             e.printStackTrace();
         }
     }
-    private static ArrayList<String> findRegexMatches(String regex, String inputText)
-    {
-        ArrayList<String> result = new ArrayList<>();
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(inputText);
 
-        while (matcher.find()) {
-            String match = matcher.group();
-            result.add(match);
-        }
-        return result;
-    }
 
 }
