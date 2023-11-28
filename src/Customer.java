@@ -34,7 +34,7 @@ public class Customer extends Thread {
             thread2.start();
 
             while (true) {
-                System.out.println("Enter a command (order tea, order coffee, order status, exit):");
+                System.out.println("Enter a command (order tea (max:9) , order coffee (max:9) , order status, exit):");
                 int orderCount = 1;
                 String command = userInput.nextLine();
                 command = command.toLowerCase();

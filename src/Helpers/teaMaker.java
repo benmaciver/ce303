@@ -6,10 +6,10 @@ public class teaMaker implements Runnable{
     @Override
     public void run() {
         isRunning=true;
-        System.out.println("Making tea");
+
         try {
-            Thread.sleep(6000);
-            System.out.println("Tea made");
+            Thread.sleep(30000);
+
         } catch (InterruptedException e) {
 //            throw new RuntimeException(e);
         }

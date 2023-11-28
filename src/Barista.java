@@ -102,6 +102,7 @@ public class Barista extends Thread{
                     if (Barista3.getState() == Thread.State.NEW) {
                         if (!changingList)
                             waitingArea.remove(command);
+                        printServerState();
                         Barista3.start();
                         drinkRecipients[2] = command[1];
 
@@ -112,6 +113,7 @@ public class Barista extends Thread{
                     if (Barista4.getState() == Thread.State.NEW) {
                         if (!changingList)
                             waitingArea.remove(command);
+                        printServerState();
                         Barista4.start();
                         drinkRecipients[3] = command[1];
 
@@ -126,6 +128,7 @@ public class Barista extends Thread{
                     if (Barista1.getState() == Thread.State.NEW) {
                         if (!changingList)
                             waitingArea.remove(command);
+                        printServerState();
                         Barista1.start();
                         drinkRecipients[0] = command[1];
 
@@ -136,6 +139,7 @@ public class Barista extends Thread{
                     if (Barista2.getState() == Thread.State.NEW) {
                         if (!changingList)
                             waitingArea.remove(command);
+                        printServerState();
                         Barista2.start();
                         drinkRecipients[1] = command[1];
 
@@ -183,10 +187,12 @@ public class Barista extends Thread{
                 Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
                 PrintWriter outStream = new PrintWriter(clientSocket.getOutputStream(), true);
                 String currentUser = input.nextLine();
+
                 users.add(currentUser);
                 outputs.put(currentUser,outStream);
 
                 while (true) {
+                    printServerState();
                     String line;
                     line = input.nextLine();
                     boolean br = false;
@@ -204,22 +210,23 @@ public class Barista extends Thread{
                             Barista4.interrupt();
                         }
                         brewingArea.remove(currentUser);
-                        waitingArea.removeIf(s -> s[1].equals(currentUser));
+                        String finalCurrentUser = currentUser;
+                        waitingArea.removeIf(s -> s[1].equals(finalCurrentUser));
+                        users.remove(currentUser);
                         break;
                     }
-                    if (line.equals("order status")){
-
-                        int trayCoffee=0,trayTea=0;
-                        int brewingCoffee=0,brewingTea=0;
-                        int waitTea=0,waitCoffee=0;
-                        for (var item : brewingArea.entrySet()){
-                            if (item.getKey().equals(currentUser)){
+                    if (line.equals("order status")) {
+                        int trayCoffee = 0, trayTea = 0;
+                        int brewingCoffee = 0, brewingTea = 0;
+                        int waitTea = 0, waitCoffee = 0;
+                        for (var item : brewingArea.entrySet()) {
+                            if (item.getKey().equals(currentUser)) {
                                 String[] arr1 = item.getValue().get(0);
                                 String[] arr2 = item.getValue().get(1);
-                                for (int i = 0;i < arr1.length; i++){
+                                for (int i = 0; i < arr1.length; i++) {
                                     if (arr1[i] != arr2[i] && arr2[i].equals("order tea"))
                                         trayTea++;
-                                    else if(arr1[i] != arr2[i] && arr2[i].equals("order coffee"))
+                                    else if (arr1[i] != arr2[i] && arr2[i].equals("order coffee"))
                                         trayCoffee++;
                                 }
                             }
@@ -236,27 +243,35 @@ public class Barista extends Thread{
                         if (drinkRecipients[3] != null && drinkRecipients[3].equals(currentUser)) {
                             brewingTea++;
                         }
-                        for (String[] item : waitingArea){
-                            if (item[1].equals(currentUser)){
+                        for (String[] item : waitingArea) {
+                            if (item[1].equals(currentUser)) {
                                 if (item[0].equals("order tea"))
                                     waitTea++;
                                 else waitCoffee++;
                             }
                         }
-                        outStream.println("\nOrder status for " + currentUser + ":\n" +
-                                waitCoffee + " coffees waiting and " + waitTea + " teas waiting\n" +
-                                brewingCoffee + " cofees being prepared and " + brewingTea + " teas being prepared\n" +
-                                trayCoffee + " coffees in the tray and "+ trayTea + " teas in the tray");
+                        boolean idle = true;
+                        if (trayTea>0 || trayCoffee>0 || brewingTea>0 || brewingCoffee>0 || waitTea>0 || waitCoffee>0)
+                            idle = false;
+                        if (!idle){
+                            outStream.println("\nOrder status for " + currentUser + ":\n" +
+                                    waitCoffee + " coffees waiting and " + waitTea + " teas waiting\n" +
+                                    brewingCoffee + " cofees being prepared and " + brewingTea + " teas being prepared\n" +
+                                    trayCoffee + " coffees in the tray and " + trayTea + " teas in the tray");
+                        }
+                        else outStream.println("No orders found for " + currentUser);
                         continue;
                     }
                     int orderCount = Integer.parseInt(line);
                     String[] order = new String[orderCount];
+                    int teas=0,coffees=0;
                     for (int i =0; i < orderCount; i ++){
                         line = input.nextLine();
                         order[i] = line;
                         String[] command =  {line,currentUser};
-                        outStream.println(processCommand(command,true));
+                        processCommand(command,true);
                     }
+                    outStream.println("order recieved for " + currentUser + " (" + teas + " teas and " + coffees + "coffees");
                     boolean appendingExistingOrder = false;
                     for (var item : brewingArea.entrySet()) {
                         if (item.getKey().equals(currentUser)){
@@ -283,6 +298,45 @@ public class Barista extends Thread{
                 e.printStackTrace();
             }
         }
+    }
+    static void printServerState(){
+        System.out.println("There is " + users.size() + " customer(s) in the cafe");
+        ArrayList<String> usersWaiting = new ArrayList<>();
+        for (var order : waitingArea){
+            if (!usersWaiting.contains(order[1]))
+                usersWaiting.add(order[1]);
+        }
+        System.out.println("There is " + usersWaiting.size() + " customer(s) waiting for their orders");
+        int teaCount=0,coffeeCount=0;
+        for (var item : waitingArea){
+            if (item[0].equals("order tea"))
+                teaCount++;
+            else coffeeCount++;
+        }
+        System.out.println("There is " + teaCount + " tea(s) and " + coffeeCount + " coffee(s) waiting to be prepared");
+        int teaBrewing=0,coffeeBrewing=0;
+
+        if (drinkRecipients[0]!=null)
+            coffeeBrewing++;
+        if (drinkRecipients[1]!=null)
+            coffeeBrewing++;
+        if (drinkRecipients[2]!=null)
+            teaBrewing++;
+        if (drinkRecipients[3]!=null)
+            teaBrewing++;
+        System.out.println("There is " + teaBrewing + " tea(s) and " + coffeeBrewing + " coffee(s) being prepared");
+        int teaTray=0,coffeeTray=0;
+        for (var item : brewingArea.entrySet()){
+            String[] arr1 = item.getValue().get(0);
+            String[] arr2 = item.getValue().get(1);
+            for (int i = 0; i < arr1.length; i++){
+                if (arr1[i]!=arr2[i] && arr2[i].equals("order tea"))
+                    teaTray++;
+                else if (arr1[i]!=arr2[i] && arr2[i].equals("order coffee"))
+                    coffeeTray++;
+            }
+        }
+        System.out.println("There is " + teaTray + " tea(s) and " + coffeeTray + " coffee(s) in the tray");
     }
 
 }
