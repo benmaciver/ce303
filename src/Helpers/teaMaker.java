@@ -9,10 +9,11 @@ public class teaMaker implements Runnable{
         System.out.println("Making tea");
         try {
             Thread.sleep(6000);
+            System.out.println("Tea made");
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+//            throw new RuntimeException(e);
         }
-        System.out.println("Tea made");
         isRunning=false;
     }
+
 }

@@ -50,6 +50,7 @@ public class Barista extends Thread{
                             else coffee++;
                         }
                         output.println("order delivered to " + entry.getKey() + " ( " + tea + " teas and " + coffee + " coffees )");
+                        brewingArea.remove(currentUser);
                     }
                 }
                 ArrayList<String> copy = (ArrayList<String>) waitingArea.clone();
@@ -80,32 +81,62 @@ public class Barista extends Thread{
                     String line;
                     line = input.nextLine();
                     boolean br = false;
-                    if (line.equals("exit"))
+                    if (line.equals("exit")) {
+
+                        Barista1.interrupt();Barista2.interrupt();
+                        Barista3.interrupt();Barista4.interrupt();
+                        brewingArea = new HashMap<>();
+                        trayArea =new ArrayList<>();
+                        waitingArea = new ArrayList<>();
                         break;
+                    }
                     if (line.equals("order status")){
-                        Boolean complete = true;
-                        for (String recipient : drinkRecipients){
-                            if (recipient !=null && recipient.equals(currentUser)) {
-                                complete = false;
+
+                        int trayCoffee=0,trayTea=0;
+                        int brewingCoffee=0,brewingTea=0;
+                        for (var item : brewingArea.entrySet()){
+                            if (item.getKey().equals(currentUser)){
+                                String[] arr1 = item.getValue().get(0);
+                                String[] arr2 = item.getValue().get(1);
+                                for (int i = 0;i < arr1.length; i++){
+                                    if (arr1[i] !=null && arr1[i].equals(arr2[i])){
+                                        if (arr1[i].equals("order tea"))
+                                            brewingTea++;
+                                        else brewingCoffee++;
+                                    }
+                                    else if (arr2[i].equals("order tea"))
+                                        trayTea++;
+                                    else trayCoffee++;
+                                }
                             }
                         }
-                        if (complete)
-                            output.println("order complete");
-                        else output.println("order being processed");
+                        output.println("\nOrder status for " + currentUser + ":\n" +
+                            brewingCoffee + " cofees being prepared and " + brewingTea + " teas being prepared\n" +
+                            trayCoffee + " coffees in the tray and "+ trayTea + " teas in the tray");
                         continue;
-
                     }
                     int orderCount = Integer.parseInt(line);
                     String[] order = new String[orderCount];
-                    for (int i =0; i < orderCount; i ++){
+                           for (int i =0; i < orderCount; i ++){
                         line = input.nextLine();
                         order[i] = line;
                         output.println(processCommand(line,true));
                     }
-                    ArrayList<String[]> list = new ArrayList<>();
-                    list.add(order);
-                    list.add(Arrays.copyOf(order,order.length));
-                    brewingArea.put(currentUser,list);
+                    boolean appendingExistingOrder = false;
+                    for (var item : brewingArea.entrySet()) {
+                        if (item.getKey().equals(currentUser)){
+                            item.getValue().set(0,concatenateArrays(item.getValue().get(0),order ));
+                            item.getValue().set(1,item.getValue().get(0).clone());
+                            appendingExistingOrder = true;
+                        }
+
+                    }
+                    if (!appendingExistingOrder){
+                        ArrayList<String[]> list = new ArrayList<>();
+                        list.add(order);
+                        list.add(Arrays.copyOf(order,order.length));
+                        brewingArea.put(currentUser,list);
+                    }
 
                 }
 
@@ -200,6 +231,21 @@ public class Barista extends Thread{
             }
         }
         return true; // All elements are null
+    }
+    public static String[] concatenateArrays(String[] array1, String[] array2) {
+        int length1 = array1.length;
+        int length2 = array2.length;
+
+        // Create a new array with the combined length
+        String[] resultArray = new String[length1 + length2];
+
+        // Copy elements from the first array
+        System.arraycopy(array1, 0, resultArray, 0, length1);
+
+        // Copy elements from the second array
+        System.arraycopy(array2, 0, resultArray, length1, length2);
+
+        return resultArray;
     }
 
 
