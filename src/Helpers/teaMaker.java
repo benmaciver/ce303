@@ -1,7 +1,7 @@
 package Helpers;
 
 public class teaMaker implements Runnable{
-
+    //simulates tea making process (30 secs long)
     public boolean isRunning = false;
     @Override
     public void run() {

@@ -6,16 +6,18 @@ import Helpers.*;
 import static Helpers.helperMethods.*;
 
 public class Barista extends Thread{
+    // Barista threads for coffee and tea
     static Thread Barista1 = new Thread(new coffeeMaker());
     static Thread Barista2 = new Thread(new coffeeMaker());
     static Thread Barista3 = new Thread(new teaMaker());
     static Thread Barista4 = new Thread(new teaMaker());
+    // Arrays and collections to manage orders and users
     static String[] drinkRecipients = new String[4];
     static ArrayList<String[]> waitingArea = new ArrayList<>();
     static Map<String,ArrayList<String[]>> brewingArea = new HashMap<>();
-    static ArrayList<String> trayArea = new ArrayList<>();
     static ArrayList<String> users = new ArrayList<>();
     static Map<String,PrintWriter> outputs = new HashMap<>();
+    // Main thread execution, updates brewing area if drink has finished brewing
     public void run(){
         while (true) {
             if (System.currentTimeMillis() % 50 == 0) {
@@ -52,6 +54,7 @@ public class Barista extends Thread{
                     }
                     drinkRecipients[3]=null;
                 }
+                //If all drinks have been brewed in an order the order is returned to the user and marked as compelte
                 Map<String,ArrayList<String[]>> clone = new HashMap<>(brewingArea);
                 for (Map.Entry<String, ArrayList<String[]>> entry : clone.entrySet()){
                     if (areAllElementsNull(entry.getValue().get(0))){
@@ -67,7 +70,10 @@ public class Barista extends Thread{
                         brewingArea.remove(entry.getKey());
                     }
                 }
-                ArrayList<String[]> copy = (ArrayList<String[]>) waitingArea.clone();
+                //sorts through the waiting area
+                ArrayList<String[]> copy = new ArrayList<>(waitingArea.size());
+                copy.addAll(waitingArea);
+
                 for (String[] request : copy) {
                     processCommand(request, false);
                 }
@@ -79,12 +85,15 @@ public class Barista extends Thread{
     public static void main(String[] args) {
         int user = 0;
         try {
+            //opens server
             ServerSocket serverSocket = new ServerSocket(5000);
             System.out.println("Server is waiting for customers...");
+            //starts run method from above, this run basically maintains the server in a simultaneously running thread
             Barista thread2 = new Barista();
             thread2.start();
 
             while (true) {
+                //Runs when a customer connects to server
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Customer connected.");
                 Thread clientThread = new Thread(new ClientHandler(clientSocket));
@@ -95,6 +104,7 @@ public class Barista extends Thread{
         }
     }
 
+    //processes specific commands of an order, strating the relevant thread or adds to waiting area
     private static String processCommand(String[] command,boolean changingList){
         switch (command[0].toLowerCase()) {
             case "order tea":
@@ -153,6 +163,8 @@ public class Barista extends Thread{
                 return "Invalid command";
         }
     }
+
+    //updates the brewing area with the drink thats been made and the user its for
     private static boolean updateBrewingArea(String user, String drink){
         boolean br = false;
         for (Map.Entry<String, ArrayList<String[]>> entry : brewingArea.entrySet()){
@@ -173,6 +185,7 @@ public class Barista extends Thread{
         }
         return br;
     }
+    //This class handles an instance of a clients connection and communication with the Barista server
     private static class ClientHandler implements Runnable {
         private final Socket clientSocket;
 
@@ -183,11 +196,13 @@ public class Barista extends Thread{
         @Override
         public void run() {
             try {
-
+                //i/o streams for this instance of customer connection
                 Scanner input = new Scanner(new InputStreamReader(clientSocket.getInputStream()));
                 PrintWriter outStream = new PrintWriter(clientSocket.getOutputStream(), true);
                 String currentUser = input.nextLine();
 
+
+                //adds new user to list of users and the users outstream to outputs list
                 users.add(currentUser);
                 outputs.put(currentUser,outStream);
 
@@ -196,6 +211,7 @@ public class Barista extends Thread{
                     String line;
                     line = input.nextLine();
                     boolean br = false;
+                    //Cancels all operations for said user
                     if (line.equals("exit")) {
                         if (drinkRecipients[0] != null && drinkRecipients[0].equals(currentUser)) {
                             Barista1.interrupt();
@@ -215,6 +231,7 @@ public class Barista extends Thread{
                         users.remove(currentUser);
                         break;
                     }
+                    //returns order status to user
                     if (line.equals("order status")) {
                         int trayCoffee = 0, trayTea = 0;
                         int brewingCoffee = 0, brewingTea = 0;
@@ -262,6 +279,7 @@ public class Barista extends Thread{
                         else outStream.println("No orders found for " + currentUser);
                         continue;
                     }
+                    //else process the users order
                     int orderCount = Integer.parseInt(line);
                     String[] order = new String[orderCount];
                     int teas=0,coffees=0;
@@ -271,7 +289,8 @@ public class Barista extends Thread{
                         String[] command =  {line,currentUser};
                         processCommand(command,true);
                     }
-                    outStream.println("order recieved for " + currentUser + " (" + teas + " teas and " + coffees + "coffees");
+                    outStream.println("order recieved for " + currentUser + " (" + teas + " teas and " + coffees + "coffees)");
+                    //checks if the user is appending to exisiting order or if this is a new order and executes correct logic for that purpose
                     boolean appendingExistingOrder = false;
                     for (var item : brewingArea.entrySet()) {
                         if (item.getKey().equals(currentUser)){
@@ -299,6 +318,7 @@ public class Barista extends Thread{
             }
         }
     }
+    //Merthod prints server state to Barista terminal
     static void printServerState(){
         System.out.println("There is " + users.size() + " customer(s) in the cafe");
         ArrayList<String> usersWaiting = new ArrayList<>();

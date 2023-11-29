@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class helperMethods {
+    //Returns an arraY list of every instance a regex match is found in inputText
     public static ArrayList<String> findRegexMatches(String regex, String inputText)
     {
         ArrayList<String> result = new ArrayList<>();
@@ -17,25 +18,27 @@ public class helperMethods {
         }
         return result;
     }
+    //returns if all elements in an array are null
     public static <T> boolean areAllElementsNull(T[] array) {
         for (T element : array) {
             if (element != null) {
-                return false; // If any element is not null, return false
+                return false;
             }
         }
-        return true; // All elements are null
+        return true;
     }
+    //adds two arrays together
     public static String[] concatenateArrays(String[] array1, String[] array2) {
         int length1 = array1.length;
         int length2 = array2.length;
 
-        // Create a new array with the combined length
+
         String[] resultArray = new String[length1 + length2];
 
-        // Copy elements from the first array
+
         System.arraycopy(array1, 0, resultArray, 0, length1);
 
-        // Copy elements from the second array
+
         System.arraycopy(array2, 0, resultArray, length1, length2);
 
         return resultArray;

@@ -1,7 +1,7 @@
 package Helpers;
 
 public class coffeeMaker implements Runnable{
-
+    //simulates coffee making process (45 secs long)
     public boolean isRunning = false;
     @Override
     public void run() {
